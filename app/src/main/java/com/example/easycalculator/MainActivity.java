@@ -10,10 +10,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import java.util.Stack;
 
 import com.google.android.material.button.MaterialButton;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.Scriptable;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -71,40 +70,141 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         String buttonText = button.getText().toString();
         String dataToCalculate = solutionTv.getText().toString();
 
-        if(buttonText.equals("AC")) {
+        // Clear everything on AC button
+        if (buttonText.equals("AC")) {
             solutionTv.setText("");
             resultTv.setText("0");
             return;
         }
-        if (buttonText.equals("=")) {
-            solutionTv.setText(resultTv.getText());
+
+        // Backspace functionality for C button
+        if (buttonText.equals("C")) {
+            if (!dataToCalculate.isEmpty()) {
+                dataToCalculate = dataToCalculate.substring(0, dataToCalculate.length() - 1);
+                solutionTv.setText(dataToCalculate);
+            }
             return;
         }
-        if (buttonText.equals("C")) {
-            dataToCalculate = dataToCalculate.substring(0, dataToCalculate.length() - 1);
-        } else {
-            dataToCalculate = dataToCalculate + buttonText;
-        }
-        solutionTv.setText(dataToCalculate);
 
-        String finalResult = getResult(dataToCalculate);
-
-        if(!finalResult.equals("Err")) {
+        // Perform calculation only when "=" is pressed
+        if (buttonText.equals("=")) {
+            String finalResult = getResult(dataToCalculate);
             resultTv.setText(finalResult);
+            return;
         }
+
+        // Prevent leading zero for the first number
+        if (dataToCalculate.isEmpty() && buttonText.equals("0")) {
+            return;
+        }
+
+        // Handle multiple decimals: Allow one decimal per number
+        if (buttonText.equals(".")) {
+            if (dataToCalculate.isEmpty() || dataToCalculate.endsWith(" ")) {
+                // Automatically prepend a leading zero for a decimal starting a number
+                dataToCalculate += "0.";
+            } else {
+                // Check if the current number already contains a decimal
+                String[] parts = dataToCalculate.split("[+\\-*/]");
+                String currentNumber = parts[parts.length - 1];
+                if (currentNumber.contains(".")) {
+                    return; // Skip if the current number already has a decimal
+                }
+                dataToCalculate += ".";
+            }
+            solutionTv.setText(dataToCalculate);
+            return;
+        }
+
+        // Append input for other buttons
+        if ("+-*/".contains(buttonText)) {
+            dataToCalculate += " " + buttonText + " "; // Add spaces around operators for clarity
+        } else {
+            dataToCalculate += buttonText;
+        }
+
+        solutionTv.setText(dataToCalculate);
     }
+
     String getResult(String data) {
         try {
-            Context context = Context.enter();
-            context.setOptimizationLevel(-1);
-            Scriptable scriptable = context.initStandardObjects();
-            String finalResult = context.evaluateString(scriptable, data, "Javascript", 1, null).toString();
-            if (finalResult.endsWith(".0")) {
-                finalResult = finalResult.replace(".0", "");
+            // Replace invalid symbols for consistency
+            data = data.replace("÷", "/").replace("×", "*");
+
+            // Create stacks for numbers and operators
+            Stack<Double> numbers = new Stack<>();
+            Stack<Character> operators = new Stack<>();
+            int i = 0;
+
+            while (i < data.length()) {
+                char ch = data.charAt(i);
+
+                if (Character.isDigit(ch) || ch == '.') {
+                    // Parse the number
+                    StringBuilder num = new StringBuilder();
+                    while (i < data.length() && (Character.isDigit(data.charAt(i)) || data.charAt(i) == '.')) {
+                        num.append(data.charAt(i));
+                        i++;
+                    }
+                    numbers.push(Double.parseDouble(num.toString()));
+                    continue;
+                } else if (ch == '(') {
+                    operators.push(ch);
+                } else if (ch == ')') {
+                    // Solve the expression inside parentheses
+                    while (operators.peek() != '(') {
+                        numbers.push(applyOperation(operators.pop(), numbers.pop(), numbers.pop()));
+                    }
+                    operators.pop();
+                } else if (isOperator(ch)) {
+                    // Handle operator precedence
+                    while (!operators.isEmpty() && precedence(ch) <= precedence(operators.peek())) {
+                        numbers.push(applyOperation(operators.pop(), numbers.pop(), numbers.pop()));
+                    }
+                    operators.push(ch);
+                }
+                i++;
             }
-            return finalResult;
+
+            // Solve the remaining operations
+            while (!operators.isEmpty()) {
+                numbers.push(applyOperation(operators.pop(), numbers.pop(), numbers.pop()));
+            }
+
+            // Format the result
+            double result = numbers.pop();
+            if (result == (long) result) {
+                return String.valueOf((long) result);
+            } else {
+                return String.valueOf(result);
+            }
         } catch (Exception e) {
             return "Err";
+        }
+    }
+
+    boolean isOperator(char c) {
+        return c == '+' || c == '-' || c == '*' || c == '/';
+    }
+
+    int precedence(char operator) {
+        if (operator == '+' || operator == '-') return 1;
+        if (operator == '*' || operator == '/') return 2;
+        return -1;
+    }
+
+    double applyOperation(char operator, double b, double a) {
+        switch (operator) {
+            case '+':
+                return a + b;
+            case '-':
+                return a - b;
+            case '*':
+                return a * b;
+            case '/':
+                return b != 0 ? a / b : Double.POSITIVE_INFINITY;
+            default:
+                return 0;
         }
     }
 }
