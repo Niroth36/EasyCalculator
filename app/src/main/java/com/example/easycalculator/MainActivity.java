@@ -71,20 +71,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         String dataToCalculate = solutionTv.getText().toString();
 
         // Clear everything on AC button
-        if (buttonText.equals("AC")) {
+        if (buttonText.equals("CE")) {
             solutionTv.setText("");
             resultTv.setText("0");
             return;
         }
 
-        // Backspace functionality for C button
-        if (buttonText.equals("C")) {
+        if (buttonText.equals("-/+")) {
             if (!dataToCalculate.isEmpty()) {
-                dataToCalculate = dataToCalculate.substring(0, dataToCalculate.length() - 1);
-                solutionTv.setText(dataToCalculate);
+                // Split by spaces to properly handle multi-character numbers
+                String[] parts = dataToCalculate.split(" ");
+                if (parts.length > 0) {
+                    String lastNumber = parts[parts.length - 1];
+
+                    // Ensure it's actually a number
+                    if (lastNumber.matches("-?\\d+(\\.\\d+)?")) {
+                        StringBuilder newData = new StringBuilder();
+
+                        // Rebuild the expression up to the last number
+                        for (int i = 0; i < parts.length - 1; i++) {
+                            newData.append(parts[i]).append(" ");
+                        }
+
+                        // Toggle sign
+                        if (lastNumber.startsWith("-")) {
+                            newData.append(lastNumber.substring(1));  // Remove negative sign
+                        } else {
+                            newData.append("-").append(lastNumber);  // Add negative sign
+                        }
+
+                        dataToCalculate = newData.toString().trim();
+                        solutionTv.setText(dataToCalculate);
+                    }
+                }
             }
             return;
         }
+
 
         // Perform calculation only when "=" is pressed
         if (buttonText.equals("=")) {
@@ -120,7 +143,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if ("+-*/".contains(buttonText)) {
             dataToCalculate += " " + buttonText + " "; // Add spaces around operators for clarity
         } else {
-            dataToCalculate += buttonText;
+            // Prevent leading zero issue for the first number
+            if (dataToCalculate.equals("0")) {
+                dataToCalculate = buttonText; // Replace "0" instead of appending
+            } else {
+                dataToCalculate += buttonText;
+            }
         }
 
         solutionTv.setText(dataToCalculate);
@@ -171,17 +199,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 numbers.push(applyOperation(operators.pop(), numbers.pop(), numbers.pop()));
             }
 
-            // Format the result
+            // Format result to two decimal places
             double result = numbers.pop();
             if (result == (long) result) {
-                return String.valueOf((long) result);
+                return String.valueOf((long) result); // Show integer if there's no decimal
             } else {
-                return String.valueOf(result);
+                return String.format("%.2f", result); // Show 2 decimal places otherwise
             }
         } catch (Exception e) {
             return "Err";
         }
     }
+
 
     boolean isOperator(char c) {
         return c == '+' || c == '-' || c == '*' || c == '/';
