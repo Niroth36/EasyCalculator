@@ -52,9 +52,9 @@
                 android:layout_height="72dp"
                 android:layout_margin="12dp"
                 android:backgroundTint="#F01111"
-                android:text="C"
+                android:text="-/+"
                 android:textColor="@color/white"
-                android:textSize="32dp"
+                android:textSize="20dp"
                 app:cornerRadius="36dp" />
 
             <com.google.android.material.button.MaterialButton
@@ -263,7 +263,7 @@
                 android:layout_height="72dp"
                 android:layout_margin="12dp"
                 android:backgroundTint="#F01111"
-                android:text="AC"
+                android:text="CE"
                 android:textColor="@color/white"
                 android:textSize="20dp"
                 app:cornerRadius="36dp" />
